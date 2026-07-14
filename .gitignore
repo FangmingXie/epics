@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# project data and logs
+data/
+logs/
+
+# keep the env/ dir for saved package lists (overrides the virtualenv rule above)
+!env/
