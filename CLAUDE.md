@@ -31,7 +31,8 @@ epics/
 
 ## Environment
 
-- Use this conda env to run this project: `epics`
+- Use this conda env to run this project: `epics`, that means to run any python script with `conda run -n epics`
+- For heavy-lifting scripts, prefer running unbuffered at both levels so output (progress, logs) streams in real time: use `conda run --no-capture-output -n epics python -u <script>.py`
 
 ## .gitignore Notes
 
