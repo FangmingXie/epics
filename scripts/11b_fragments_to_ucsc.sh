@@ -13,6 +13,13 @@ FRAG_BGZ=${DATA}/atac_fragments.tsv.bgz              # input: raw Ensembl-style 
 FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.bgz    # output: UCSC + primary chroms, bgzipped
 FRAG_UCSC_TBI=${FRAG_UCSC_BGZ}.tbi
 
+# htslib (bgzip/tabix) is not in the `epics` env; use the chrombpnet env's binaries (htslib 1.22.1).
+BGZIP=/home/qlyu/miniforge3/envs/chrombpnet/bin/bgzip
+TABIX=/home/qlyu/miniforge3/envs/chrombpnet/bin/tabix
+
+for tool in "${BGZIP}" "${TABIX}"; do
+    [[ -x "${tool}" ]] || { echo "ERROR: ${tool} not found/executable." >&2; exit 1; }
+done
 if [[ ! -s "${FRAG_BGZ}" ]]; then
     echo "ERROR: ${FRAG_BGZ} missing/empty — Stage 0 download not complete." >&2
     exit 1
@@ -26,14 +33,14 @@ zcat "${FRAG_BGZ}" \
                  for(i in a) keep[a[i]]=1}
                 /^#/{print; next}
                 { c=$1; if(c=="MT") c="chrM"; else if(c in keep) c="chr" c; else next; $1=c; print }' \
-  | bgzip -c > "${FRAG_UCSC_BGZ}"
+  | "${BGZIP}" -c > "${FRAG_UCSC_BGZ}"
 
 echo "[$(date)] indexing -> ${FRAG_UCSC_TBI}"
-tabix -p bed "${FRAG_UCSC_BGZ}"
+"${TABIX}" -p bed "${FRAG_UCSC_BGZ}"
 
 echo "[$(date)] done."
 ls -lh "${FRAG_UCSC_BGZ}" "${FRAG_UCSC_TBI}"
 echo "--- head (expect chr* in col1, barcodes unchanged) ---"
 zcat "${FRAG_UCSC_BGZ}" | grep -v '^#' | head -3
 echo "--- chroms present ---"
-tabix -l "${FRAG_UCSC_BGZ}" | tr '\n' ' '; echo
+"${TABIX}" -l "${FRAG_UCSC_BGZ}" | tr '\n' ' '; echo
