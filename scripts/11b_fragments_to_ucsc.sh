@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Stage 2b — Normalize the Wang25 ATAC fragments to UCSC chrom naming + primary chromosomes.
-# CELLxGENE fragments are Ensembl-style (1, 2, MT, GL...) but the fasta/blacklist/tutorials are UCSC
-# (chr1, ...). A mismatch silently yields empty region<->fragment overlaps -> empty GRN. This step maps
-# 1..22/X/Y -> chr*, MT -> chrM, drops all scaffolds/patches, then re-indexes with tabix.
-# Runs ONCE after the Stage 0 download completes. All of Stage 3 reads the output, not the raw file.
+# Stage 2b — Restrict the Wang25 ATAC fragments to primary UCSC chromosomes.
+#
+# Runtime finding (tabix -l on the raw index): the fragment file is MIXED —
+#   primary chroms are ALREADY UCSC (chr1..chr22, chrX, chrY); only the scaffolds are
+#   Ensembl-named (GL000009.2, KI270711.1, ...); there is no chrM.
+# The on-disk fasta/blacklist/gene-annotation are UCSC with UCSC-named scaffolds
+# (chrUn_GL...), so the Ensembl-named fragment scaffolds match nothing downstream and
+# are not in our chromsizes. We therefore DROP scaffolds and keep the primary chroms
+# as-is (no renaming), then re-index. Runs ONCE after Stage 0; all of Stage 3 reads the output.
 set -euo pipefail
 
 # --- paths (capitalized per CLAUDE.md) ---
 PROJ=/data/qlyu/project/epics
 DATA=${PROJ}/data/wang25
-FRAG_BGZ=${DATA}/atac_fragments.tsv.bgz              # input: raw Ensembl-style fragments (42 GB)
-FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.bgz    # output: UCSC + primary chroms, bgzipped
+FRAG_BGZ=${DATA}/atac_fragments.tsv.bgz              # input: raw fragments (40 GB; primary=UCSC, scaffolds=Ensembl)
+FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.bgz    # output: primary UCSC chroms only, bgzipped
 FRAG_UCSC_TBI=${FRAG_UCSC_BGZ}.tbi
 
 # htslib (bgzip/tabix) is not in the `epics` env; use the chrombpnet env's binaries (htslib 1.22.1).
@@ -25,14 +29,15 @@ if [[ ! -s "${FRAG_BGZ}" ]]; then
     exit 1
 fi
 
-echo "[$(date)] converting fragments to UCSC + primary chroms -> ${FRAG_UCSC_BGZ}"
-# rows stay chrom-contiguous and position-sorted (rename only, no reorder) -> tabix-valid.
+echo "[$(date)] filtering fragments to primary UCSC chroms -> ${FRAG_UCSC_BGZ}"
+# Keep only chr1..chr22, chrX, chrY, chrM (chrM absent here but harmless). Rows stay
+# chrom-contiguous + position-sorted (filter only, no reorder) -> tabix-valid.
 zcat "${FRAG_BGZ}" \
   | awk -F'\t' 'BEGIN{OFS="\t";
-                 split("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y",a," ");
+                 split("chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY chrM",a," ");
                  for(i in a) keep[a[i]]=1}
                 /^#/{print; next}
-                { c=$1; if(c=="MT") c="chrM"; else if(c in keep) c="chr" c; else next; $1=c; print }' \
+                $1 in keep' \
   | "${BGZIP}" -c > "${FRAG_UCSC_BGZ}"
 
 echo "[$(date)] indexing -> ${FRAG_UCSC_TBI}"
@@ -42,5 +47,5 @@ echo "[$(date)] done."
 ls -lh "${FRAG_UCSC_BGZ}" "${FRAG_UCSC_TBI}"
 echo "--- head (expect chr* in col1, barcodes unchanged) ---"
 zcat "${FRAG_UCSC_BGZ}" | grep -v '^#' | head -3
-echo "--- chroms present ---"
+echo "--- chroms present (expect chr1..chr22, chrX, chrY only) ---"
 "${TABIX}" -l "${FRAG_UCSC_BGZ}" | tr '\n' ' '; echo
