@@ -20,6 +20,7 @@ L23_BARCODES = f"{DATA}/v1_l23_barcodes.txt"          # output: one barcode per 
 TYPE_COL, TYPE_VAL = "Type", "EN-L2_3-IT"
 REGION_COL, REGION_VAL = "Region", "V1"
 EXPECTED_N = 5558
+GENE_SYMBOL_COL = "feature_name"    # var column with gene symbols (CELLxGENE index is Ensembl)
 
 
 def is_integer_counts(x) -> bool:
@@ -69,6 +70,24 @@ def main():
     l23.X = counts.copy() if sparse.issparse(counts) else np.asarray(counts).copy()
     l23.raw = None
     l23.layers.clear()
+
+    # Use gene SYMBOLS as var_names — SCENIC+ matches RNA genes to the (symbol-based) gene annotation
+    # and tf_names. CELLxGENE ships Ensembl IDs as the index. Collapse duplicate symbols by keeping the
+    # highest-total-count gene per symbol so names stay unique AND match the annotation (no -1/-2 suffixes).
+    if GENE_SYMBOL_COL not in l23.var.columns:
+        raise KeyError(f"var column '{GENE_SYMBOL_COL}' not found; have {list(l23.var.columns)}")
+    totals = np.asarray(l23.X.sum(axis=0)).ravel()
+    keep_order = (
+        pd.DataFrame({"sym": l23.var[GENE_SYMBOL_COL].astype(str).values, "tot": totals,
+                      "pos": np.arange(l23.n_vars)})
+        .sort_values("tot", ascending=False).drop_duplicates("sym", keep="first")
+        .sort_values("pos")["pos"].values
+    )
+    n_before = l23.n_vars
+    l23 = l23[:, keep_order].copy()
+    l23.var_names = l23.var[GENE_SYMBOL_COL].astype(str).values
+    l23.var_names_make_unique()  # no-op after dedup; guards against any residual collision
+    print(f"  var_names -> gene symbols: {n_before:,} genes -> {l23.n_vars:,} unique symbols")
 
     l23.write_h5ad(L23_GEX_H5AD)
     print(f"  wrote {L23_GEX_H5AD}")
