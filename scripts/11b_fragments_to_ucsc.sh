@@ -14,7 +14,7 @@ set -euo pipefail
 PROJ=/data/qlyu/project/epics
 DATA=${PROJ}/data/wang25
 FRAG_BGZ=${DATA}/atac_fragments.tsv.bgz              # input: raw fragments (40 GB; primary=UCSC, scaffolds=Ensembl)
-FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.bgz    # output: primary UCSC chroms only, bgzipped
+FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.gz     # output: primary UCSC chroms only, bgzipped (.gz ext so pycisTopic gzip-opens it)
 FRAG_UCSC_TBI=${FRAG_UCSC_BGZ}.tbi
 
 # htslib (bgzip/tabix) is not in the `epics` env; use the chrombpnet env's binaries (htslib 1.22.1).

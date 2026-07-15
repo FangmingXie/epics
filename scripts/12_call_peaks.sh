@@ -10,7 +10,7 @@ PROJ=/data/qlyu/project/epics
 DATA=${PROJ}/data/wang25
 WORK=${DATA}/work
 
-FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.bgz     # Stage 2b output (UCSC, primary chroms)
+FRAG_UCSC_BGZ=${DATA}/atac_fragments.ucsc.tsv.gz      # Stage 2b output (UCSC, primary chroms)
 L23_BARCODES=${DATA}/v1_l23_barcodes.txt              # Stage 1 output (5,558 barcodes)
 
 SAMPLE=l23

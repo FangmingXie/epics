@@ -23,7 +23,7 @@ DATA = f"{PROJ}/data/wang25"
 WORK = f"{DATA}/work"
 DB = f"{DATA}/db"
 
-FRAG_UCSC_BGZ = f"{DATA}/atac_fragments.ucsc.tsv.bgz"          # Stage 2b (UCSC, primary chroms)
+FRAG_UCSC_BGZ = f"{DATA}/atac_fragments.ucsc.tsv.gz"           # Stage 2b (UCSC, primary chroms; .gz so pycisTopic gzip-opens it)
 L23_BARCODES = f"{DATA}/v1_l23_barcodes.txt"                   # Stage 1 (5,558 barcodes)
 PEAKS_FILTERED = f"{WORK}/l23_summits_501_filtered.bed"        # Stage 3a consensus peaks
 HG38_BLACKLIST = f"{DB}/hg38-blacklist.v2.bed"                 # Stage 2
