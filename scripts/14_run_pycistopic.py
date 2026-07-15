@@ -23,7 +23,7 @@ DATA = f"{PROJ}/data/wang25"
 WORK = f"{DATA}/work"
 DB = f"{DATA}/db"
 
-FRAG_UCSC_BGZ = f"{DATA}/atac_fragments.ucsc.tsv.gz"           # Stage 2b (UCSC, primary chroms; .gz so pycisTopic gzip-opens it)
+FRAG_UCSC_BGZ = f"{DATA}/l23_fragments.ucsc.tsv.gz"            # Stage 3c-prep (14a): L2/3-only, column-validated, .gz
 L23_BARCODES = f"{DATA}/v1_l23_barcodes.txt"                   # Stage 1 (5,558 barcodes)
 PEAKS_FILTERED = f"{WORK}/l23_summits_501_filtered.bed"        # Stage 3a consensus peaks
 HG38_BLACKLIST = f"{DB}/hg38-blacklist.v2.bed"                 # Stage 2
@@ -36,7 +36,9 @@ TOPICS_SUBFOLDER = "topics_top_3k"
 PROJECT = "l23"
 N_TOPICS = [10, 20, 30, 40]      # LDA sweep; auto-select by coherence
 N_ITER = 150
-N_CPU = 8
+N_CPU = 8                        # LDA (run_cgs_models) parallelism
+N_CPU_CISTOPIC = 1               # cisTopic build join: serial avoids the pyranges/ray parallel-join
+                                 # NaN in regions.join(fragments).Score.astype(int32)
 RANDOM_STATE = 555
 NTOP = 3000                      # top regions per binarized topic
 
@@ -61,8 +63,8 @@ cistopic_obj = create_cistopic_object_from_fragments(
     path_to_fragments=FRAG_UCSC_BGZ,
     path_to_regions=PEAKS_FILTERED,
     path_to_blacklist=HG38_BLACKLIST,
-    valid_bc=valid_bc,           # restrict to L2/3 cells
-    n_cpu=N_CPU,
+    valid_bc=valid_bc,           # restrict to L2/3 cells (file is already L2/3-only; belt-and-suspenders)
+    n_cpu=N_CPU_CISTOPIC,        # serial join (see note above)
     project=PROJECT,
     # do NOT pass split_pattern — it creates duplicate cells (v1astro note)
 )
