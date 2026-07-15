@@ -223,3 +223,6 @@ logs/
 
 # keep the env/ dir for saved package lists (overrides the virtualenv rule above)
 !env/
+
+# biomart query cache (created by scenicplus download_genome_annotations)
+.pybiomart.sqlite
