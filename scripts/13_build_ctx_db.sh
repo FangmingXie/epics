@@ -22,7 +22,7 @@ OUT_FASTA=${DB}/l23_regions_1kb_bg.fa                 # padded-background region
 CTX_DB_PREFIX=${DB}/wang25_l23                        # → *.regions_vs_motifs.{rankings,scores}.feather
 
 BG_PADDING=1000
-N_CPU=20
+N_CPU=32
 
 # --- fail-fast checks (PATH tools come from the epics env) ---
 command -v bedtools >/dev/null || { echo "ERROR: bedtools not on PATH — run under: conda run -n epics bash $0" >&2; exit 1; }
