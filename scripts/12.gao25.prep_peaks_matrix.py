@@ -24,7 +24,8 @@ WORK = f"{DATA}/work"
 L23_PEAKS_BED = f"{WORK}/vis_l23_peaks.bed"                   # output: chr\tstart\tend (for DB build)
 L23_MATRIX_NPZ = f"{WORK}/vis_l23_matrix.npz"                # output: regions×cells CSR + names (cisTopic)
 
-MIN_CELL_FRAC = 0.01                                          # keep peaks accessible in >= 1% of L2/3 cells
+MIN_CELL_FRAC = 0.05                                          # keep peaks accessible in >= 5% of L2/3 cells
+#   (1% kept 630,895 peaks = 3x the human ~196k reference -> ~9-day DB build; 5% -> ~57k peaks, tractable)
 
 
 def main():
@@ -72,8 +73,11 @@ def main():
         fh.writelines(bed_lines)
     print(f"  wrote {L23_PEAKS_BED} ({n_keep:,} peaks)")
 
-    # regions×cells CSR (transpose) for cisTopic create_cistopic_object
-    RxC = Xk.T.tocsr()
+    # regions×cells CSR (transpose) for cisTopic create_cistopic_object.
+    # counts are integer-valued but float64 on disk; pycisTopic's LDA needs an integer matrix -> int32.
+    if not np.allclose(Xk.data, np.rint(Xk.data)):
+        raise ValueError("ATAC matrix has non-integer values — not raw counts.")
+    RxC = Xk.T.tocsr().astype(np.int32)
     density = RxC.nnz / (RxC.shape[0] * RxC.shape[1])
     print(f"  regions×cells matrix: {RxC.shape[0]:,} x {RxC.shape[1]:,}; nnz={RxC.nnz:,}; density={density:.4f}")
     np.savez(
