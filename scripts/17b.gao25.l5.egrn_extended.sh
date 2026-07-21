@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Stage 5 extended variant (gao25 · l5) — eGRN using the ORTHOLOGY-EXTENDED cistromes (mouse L5).
+# Fork of scripts/17b.gao25.egrn_extended.sh for the L5 layer (plan/06); only work/DB paths change.
+# Reuses the Stage 5a/5b adjacencies (tf_to_gene_adj.tsv, region_to_gene_adj.tsv); only the eGRN
+# assembly + AUCell differ (--is_extended, cistromes_extended.h5ad). Separate outputs.
+# Run: bash scripts/17b.gao25.l5.egrn_extended.sh
+set -euo pipefail
+
+# --- paths (capitalized per CLAUDE.md) ---
+PROJ=/data/qlyu/project/epics
+DATA=${PROJ}/data/gao25/l5
+WORK=${DATA}/work
+DB=${DATA}/db
+TMP=${WORK}/tmp
+
+TF2G=${WORK}/tf_to_gene_adj.tsv                            # Stage 5a (reused)
+R2G=${WORK}/region_to_gene_adj.tsv                       # Stage 5b (reused)
+CISTROMES_EXTENDED=${WORK}/cistromes_extended.h5ad        # Stage 4d (orthology-extended)
+CTX_RANKINGS=${DB}/gao25_l5.regions_vs_motifs.rankings.feather   # Stage 3b (per-layer DB)
+MUDATA=${WORK}/ACC_GEX.h5mu                              # Stage 4a
+
+EREGULON_EXT=${WORK}/eRegulon_extended.tsv              # output
+AUCELL_EXT=${WORK}/AUCell_extended.h5mu                 # output
+
+N_CPU=16
+SEED=666
+SP="conda run --no-capture-output -n epics scenicplus"
+
+for f in "${TF2G}" "${R2G}" "${CISTROMES_EXTENDED}" "${CTX_RANKINGS}" "${MUDATA}"; do
+    [[ -s "${f}" ]] || { echo "ERROR: required input missing/empty: ${f}" >&2; exit 1; }
+done
+mkdir -p "${TMP}"
+
+echo "[$(date)] eGRN (extended) -> ${EREGULON_EXT}"
+${SP} grn_inference eGRN \
+    --is_extended \
+    --TF_to_gene_adj_fname "${TF2G}" \
+    --region_to_gene_adj_fname "${R2G}" \
+    --cistromes_fname "${CISTROMES_EXTENDED}" --ranking_db_fname "${CTX_RANKINGS}" \
+    --eRegulon_out_fname "${EREGULON_EXT}" \
+    --temp_dir "${TMP}" \
+    --order_regions_to_genes_by importance --order_TFs_to_genes_by importance \
+    --gsea_n_perm 1000 \
+    --quantiles 0.85 0.90 0.95 \
+    --top_n_regionTogenes_per_gene 5 10 15 \
+    --min_regions_per_gene 0 --rho_threshold 0.05 --min_target_genes 10 \
+    --n_cpu ${N_CPU} --seed ${SEED}
+
+echo "[$(date)] AUCell (extended) -> ${AUCELL_EXT}"
+${SP} grn_inference AUCell \
+    --eRegulon_fname "${EREGULON_EXT}" \
+    --multiome_mudata_fname "${MUDATA}" \
+    --aucell_out_fname "${AUCELL_EXT}" \
+    --n_cpu ${N_CPU}
+
+echo "[$(date)] extended eGRN (gao25·l5) complete:"
+wc -l "${EREGULON_EXT}"
+ls -lh "${AUCELL_EXT}"
